@@ -17,6 +17,9 @@ export class MinecraftMcp {
     const result = CallToolResultSchema.parse(await client.callTool({ name, arguments: args }, undefined, { signal, timeout: 95_000 }))
     const content = result.content
     if (result.isError) {
+      if (name === 'run_command' && result.structuredContent?.feedback) {
+        throw new Error(JSON.stringify(result.structuredContent))
+      }
       const issue = result.structuredContent?.error
       const text = content.find(entry => entry.type === 'text')
       throw new Error(typeof issue === 'string' ? issue : text?.text ?? 'Minecraft tool failed')

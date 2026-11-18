@@ -580,6 +580,38 @@
     "record": true
   },
   {
+    "name": "run_command",
+    "description": "Send one Minecraft command with the current player's permissions. Returns server system chat received during the wait window, including command errors. The window can also contain unrelated system messages. Use expect_feedback to assert an expected response when recording a test.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "A single Minecraft command, such as /list. The leading slash is optional."
+        },
+        "wait_ticks": {
+          "type": "integer",
+          "description": "Client ticks to collect feedback after sending the command. Default 30.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "expect_feedback": {
+          "type": "string",
+          "description": "Optional case-sensitive substring that must appear in a captured message for the step to pass."
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true
+    },
+    "record": true
+  },
+  {
     "name": "task",
     "description": "Run one Minecraft automation task at a time. Actions: move_to, tunnel (horizontal 1x2 tunnel), farm (harvest or tend crops), mine (break and collect), follow, surface, elytra, status, pause, paused, resume, cancel. Starts return a task ID; poll status for completion. pause releases task inputs. Action names also accept a leading #.",
     "inputSchema": {

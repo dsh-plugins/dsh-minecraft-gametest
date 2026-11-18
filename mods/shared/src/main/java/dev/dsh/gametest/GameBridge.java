@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 
 final class GameBridge {
     private final Minecraft client;
@@ -12,6 +13,7 @@ final class GameBridge {
     private final Controls controls;
     private final WorldTools world;
     private final Automation automation;
+    private final CommandFeedback commandFeedback;
     private Pending pending;
     private Replay replay;
     private long tick;
@@ -22,6 +24,7 @@ final class GameBridge {
         controls = new Controls(client, ui);
         world = new WorldTools(client);
         automation = new Automation(client, world);
+        commandFeedback = new CommandFeedback(client);
     }
 
     CompletableFuture<ToolResult> submit(String name, JsonObject args) {
@@ -105,6 +108,10 @@ final class GameBridge {
         }
     }
 
+    void systemChat(Component message, boolean overlay) {
+        commandFeedback.record(message, overlay);
+    }
+
     void frame() {
         ui.frame();
     }
@@ -116,6 +123,7 @@ final class GameBridge {
             case "click_ui" -> controls.clickControl(args);
             case "key_input" -> controls.key(args);
             case "mouse_input" -> controls.mouse(args);
+            case "run_command" -> commandFeedback.run(args);
             case "task" -> {
                 var running = automation.start(args);
                 yield () -> running.result;

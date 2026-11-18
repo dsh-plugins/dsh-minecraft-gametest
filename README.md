@@ -43,6 +43,7 @@ DSH 中的工具名带有 `mc_` 前缀。
 | 方块状态和客户端持有的方块实体 SNBT | `get_block` |
 | 玩家坐标、朝向、生命值、饥饿值和背包 | `get_player` |
 | 编号点击、键盘按住、鼠标点击、拖拽和滚动 | `click_ui`、`key_input`、`mouse_input` |
+| 执行游戏命令并获取回执 | `run_command` |
 | 寻路、挖掘、耕种、跟随和飞行 | `task` |
 | 显式等待和断言 | `wait_ticks`、`assert_block`、`assert_player_position`、`assert_screen` |
 | 模组内重放和结果 | `replay_start`、`replay_status` |
@@ -50,6 +51,14 @@ DSH 中的工具名带有 `mc_` 前缀。
 打开界面后调用 `screenshot_ui`，指定 `widget`（原版按钮等控件）、`slot`（容器物品栏）或 `all`。把截图返回的 `screen`、`layout`、`control_type` 和数字 ID 一起交给 `click_ui`。如果界面控件列表改变，需要重新截图。任意界面的鼠标坐标使用截图元数据中的 GUI 像素尺寸。自绘控件可用 `mouse_input` 按坐标操作。
 
 方块区域查询每次最多 4096 格。多人世界的数据范围由服务端同步决定。
+
+## 游戏命令
+
+用 MCP 的 `run_command` 或 DSH 的 `mc_run_command` 执行单行命令，例如 `{"command":"/list"}`。前导斜杠可以省略。命令使用当前玩家的权限。
+
+工具在 `wait_ticks` 个客户端刻内收集服务端系统聊天，默认等待 30 刻。`feedback` 包含回执原文、是否为覆盖提示，以及可用的翻译键。成功消息、语法错误和权限错误均通过回执返回。无回执时返回 `no_feedback`。Minecraft 的系统聊天没有命令 ID，窗口内的其他系统消息也可能出现。
+
+命令可录制和重放。测试可用 `expect_feedback` 要求某条回执包含指定文本。缺少指定文本会让这一步失败，并返回已收到的回执。
 
 ## 自动化任务
 

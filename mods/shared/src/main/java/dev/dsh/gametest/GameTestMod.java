@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.event.ClientChatReceivedEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
@@ -34,6 +35,7 @@ public final class GameTestMod {
     public GameTestMod() {
         NeoForge.EVENT_BUS.addListener(this::tick);
         NeoForge.EVENT_BUS.addListener(this::frame);
+        NeoForge.EVENT_BUS.addListener(this::systemChat);
         NeoForge.EVENT_BUS.addListener(this::commands);
     }
 
@@ -53,6 +55,10 @@ public final class GameTestMod {
             }
         }
         bridge.tick();
+    }
+
+    private void systemChat(ClientChatReceivedEvent.System event) {
+        if (bridge != null) bridge.systemChat(event.getMessage(), event.isOverlay());
     }
 
     private void frame(RenderFrameEvent.Post event) {

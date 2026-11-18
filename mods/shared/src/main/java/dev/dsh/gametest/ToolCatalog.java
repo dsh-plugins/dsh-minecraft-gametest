@@ -43,6 +43,7 @@ final class ToolCatalog {
         if (definition == null) throw new IllegalArgumentException("Unknown tool " + tool);
         validate(definition.getAsJsonObject("inputSchema"), args, "arguments");
         if (tool.equals("task")) Automation.validate(new Arguments(args));
+        if (tool.equals("run_command")) CommandFeedback.command(new Arguments(args));
     }
 
     private static void validate(JsonObject schema, JsonElement value, String path) {
