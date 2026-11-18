@@ -1,5 +1,15 @@
 [
   {
+    "name": "return_to_title",
+    "description": "Cancel game actions and replay, disconnect from the current world, and return to the title screen.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "record": false
+  },
+  {
     "name": "status",
     "description": "Read Minecraft version, world, dimension and current screen. Works on the title screen.",
     "inputSchema": {

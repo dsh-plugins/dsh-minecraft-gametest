@@ -60,6 +60,11 @@ final class Automation {
 
     boolean busy() { return current != null && current.result == null; }
 
+    void reset() {
+        if (busy()) command("cancel");
+        current = null;
+    }
+
     JsonObject command(String action) {
         switch (action) {
             case "pause" -> {

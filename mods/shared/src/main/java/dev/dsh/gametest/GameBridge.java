@@ -4,7 +4,10 @@ import com.google.gson.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 
 final class GameBridge {
@@ -36,6 +39,7 @@ final class GameBridge {
                 var arguments = new Arguments(args);
                 if (name.equals("replay_status")) result.complete(ToolResult.ok(replayReport()));
                 else if (name.equals("status")) result.complete(ToolResult.ok(world.status()));
+                else if (name.equals("return_to_title")) result.complete(ToolResult.ok(returnToTitle()));
                 else if (name.equals("task") && Automation.control(Automation.action(arguments))) {
                     result.complete(ToolResult.ok(automation.command(Automation.action(arguments))));
                 } else if (pending != null || (replay != null && !replay.done())) {
@@ -114,6 +118,18 @@ final class GameBridge {
 
     void frame() {
         ui.frame();
+    }
+
+    private JsonObject returnToTitle() {
+        if (Platform.screen(client) instanceof ConnectScreen) throw new IllegalStateException("Minecraft is still connecting to a server");
+        if (pending != null) finish(ToolResult.error("Minecraft instance released"));
+        replay = null;
+        automation.reset();
+        KeyMapping.releaseAll();
+        if (!(Platform.screen(client) instanceof TitleScreen) || client.level != null || client.getConnection() != null) {
+            Platform.returnToTitle(client);
+        }
+        return world.status();
     }
 
     private void begin(String name, Arguments args, CompletableFuture<ToolResult> result) {

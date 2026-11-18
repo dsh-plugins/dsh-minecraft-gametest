@@ -1,0 +1,6 @@
+{
+  "1.21.11": { "neoForge": "21.11.48", "javaRelease": 21 },
+  "26.1.2": { "neoForge": "26.1.2.127", "javaRelease": 25 },
+  "26.2": { "neoForge": "26.2.0.95", "javaRelease": 25 },
+  "26.3": { "neoForge": "26.3.0.113", "javaRelease": 25 }
+}

@@ -20,15 +20,24 @@ pnpm pack
 | 26.2 | 26.2.0.95 | `mods/26.2/build/libs/` |
 | 26.3 | 26.3.0.113 | `mods/26.3/build/libs/` |
 
-1. 把对应版本的 JAR 放入 NeoForge 客户端的 `mods` 目录，启动游戏。模组在 `http://127.0.0.1:4723/mcp` 提供 Streamable HTTP 服务。多个测试实例可用 JVM 参数 `-Ddsh.gametest.port=4724` 指定其他端口。
-2. 把插件和 loader 装进同一个 DSH profile。插件使用 loader 2.x 配置面板，Web 组件由 `@dsh-plugin/dsh-ui-components` 构建。以下是 DSH 0.2.2-rc.4 的安装方式。
+`pnpm pack` 会构建并打包四个版本的模组 JAR。把插件和 loader 装进同一个 DSH profile。以下是 DSH 0.2.2-rc.4 的安装方式。
 
-   ```sh
-   dsh plugin --profile web add @dsh-plugin/dsh-loader@2.0.0-dev.43799314028 ./dsh-plugin-dsh-minecraft-gametest-0.1.0.tgz
-   dsh web
-   ```
+```sh
+dsh plugin --profile web add @dsh-plugin/dsh-loader@2.0.0-dev.43799314028 ./dsh-plugin-dsh-minecraft-gametest-0.1.0.tgz
+dsh web
+```
 
-3. 在 DSH 的插件详情页展开 **Minecraft GameTest** 配置卡片，填写游戏实例内 `config/dsh-minecraft-gametest/mcp-token` 的绝对路径，再点 **Test connection**。也可在 DSH 进程里设置 `DSH_MINECRAFT_MCP_TOKEN_FILE`，端口不同则设置 `DSH_MINECRAFT_MCP_ENDPOINT`。独立 MCP 客户端用此文件里的值作为 Bearer 令牌。
+在 DSH 插件详情页展开 **Minecraft GameTest**。版本默认留空。选择一个版本并保存后，插件下载 Minecraft Java 版、安装匹配的 NeoForge 和包内模组，并在详情页显示进度与日志。运行客户端需要图形桌面，以及 1.21.11 所需的 Java 21 或 26.x 所需的 Java 25。插件从 `JAVA_HOME` 或 `PATH` 查找 Java，也可在详情页指定 Java 可执行文件的绝对路径。
+
+插件数据位于 `<profile>/data/dsh-minecraft-gametest/`。`game/` 存放当前版本，`instances/` 存放游戏实例、存档及启动日志，`recordings/` 存放测试，`accounts/` 存放已绑定账号凭据。下载和安装日志写入 `installation.log`。改选版本后，已有会话可继续使用旧实例直至释放，随后插件替换安装。存档按版本保留。
+
+## 游戏实例与账号
+
+- **最小活跃游戏数**默认 0，**最大活跃游戏数**默认 2。在插件详情页可同时修改两项。实例就绪后，每个 DSH 会话独占一个实例。会话间可并行调用相同的 `mc_*` 工具。
+- 会话无空闲实例时排队，插件会在最大值内启动游戏。达到上限时，工具会告知 Agent 已排队。再次调用 Minecraft 工具会把该会话移到队尾。游戏可用后，插件按排队顺序分配，并向对应会话发送事件提醒。
+- 会话十分钟未使用 Minecraft 工具后，插件结束录制、取消进行中的重放和任务、退出世界并回到主界面。有排队会话时直接移交。无人排队时，超出最小值的托管实例关闭，其余解除占用并保持运行。
+- 在详情页的 **Microsoft account pool** 添加账号。用 Microsoft 完成登录后，按面板提示粘贴最终跳转地址。插件使用 Modrinth App 的 Microsoft Client ID，每个托管游戏占用一个账号，空闲账号用完后以离线身份启动。
+- 可在 **External Minecraft MCP connections** 配置同版本的外部游戏，每项提供不同的 `http://127.0.0.1:<port>/mcp` 和实例内 `config/dsh-minecraft-gametest/mcp-token` 的绝对路径。外部实例纳入最大值，回到主界面后保持进程运行。也可用 `DSH_MINECRAFT_MCP_ENDPOINT` 和 `DSH_MINECRAFT_MCP_TOKEN_FILE` 添加一个外部实例。模组默认监听 4723，外部实例可用 JVM 参数 `-Ddsh.gametest.port=4724` 指定其他端口。
 
 ## 工具
 
@@ -79,7 +88,7 @@ DSH 中的工具名带有 `mc_` 前缀。
 
 ## 记录和重放
 
-1. 加入测试世界，调用 `mc_recording_start`，传入测试名，例如 `inventory-check`。默认目录是 DSH 会话工作区内的 `minecraft-tests`。
+1. 加入测试世界，调用 `mc_recording_start`，传入测试名，例如 `inventory-check`。测试保存到当前 profile 的 `data/dsh-minecraft-gametest/recordings/`。
 2. 通过 DSH 操作游戏并添加断言。插件按执行顺序保存成功的操作、等待和断言。截图与只读查询供模型观察游戏。用 `mc_wait_ticks` 表达游戏内等待。异步任务完成后会作为一个步骤写入录像。重放会等该任务结束后再执行下一步。
 3. 调用 `mc_recording_stop` 获取文件路径。把游戏恢复到测试所需的位置与界面，再调用 `mc_replay`，传入同一个测试名。用 `mc_replay_status` 查看逐步结果。模组遇到首个失败步骤就停止，并返回步骤及原因。
 4. 也可以把 JSON 放入游戏实例的 `config/dsh-minecraft-gametest/replays/`，在游戏中运行 `/mctest replay inventory-check`，用 `/mctest status` 检查结果。

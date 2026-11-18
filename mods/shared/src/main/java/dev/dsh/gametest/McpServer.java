@@ -31,6 +31,8 @@ final class McpServer implements AutoCloseable {
         server.start();
     }
 
+    int port() { return server.getAddress().getPort(); }
+
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             if (!exchange.getRequestURI().getPath().equals("/mcp")) {

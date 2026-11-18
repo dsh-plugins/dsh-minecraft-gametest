@@ -8,13 +8,22 @@ export interface Connection {
   tokenFile: string
 }
 
+export class McpConnectionError extends Error {}
+
 export class MinecraftMcp {
   private client?: Client
   private connectionKey?: string
 
   async call(config: Connection, name: string, args: Record<string, unknown>, signal?: AbortSignal) {
-    const client = await this.connect(config, signal)
-    const result = CallToolResultSchema.parse(await client.callTool({ name, arguments: args }, undefined, { signal, timeout: 95_000 }))
+    const result = await (async () => {
+      try {
+        const client = await this.connect(config, signal)
+        return CallToolResultSchema.parse(await client.callTool({ name, arguments: args }, undefined, { signal, timeout: 95_000 }))
+      } catch (error) {
+        signal?.throwIfAborted()
+        throw new McpConnectionError(error instanceof Error ? error.message : String(error), { cause: error })
+      }
+    })()
     const content = result.content
     if (result.isError) {
       if (name === 'run_command' && result.structuredContent?.feedback) {

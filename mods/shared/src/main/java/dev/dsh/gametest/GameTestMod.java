@@ -45,11 +45,12 @@ public final class GameTestMod {
             bridge = new GameBridge(Minecraft.getInstance());
             try {
                 int port = System.getProperty("dsh.gametest.port") == null ? DEFAULT_PORT : Integer.getInteger("dsh.gametest.port", -1);
-                if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid dsh.gametest.port");
+                if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid dsh.gametest.port");
                 Files.createDirectories(config.resolve("replays"));
                 var server = new McpServer(port, readToken(), bridge);
                 Runtime.getRuntime().addShutdownHook(new Thread(server::close, "DSH Minecraft MCP shutdown"));
-                LOGGER.info("Minecraft MCP is listening at http://127.0.0.1:{}/mcp", port);
+                if (port == 0) Files.writeString(config.resolve("mcp-port"), Integer.toString(server.port()));
+                LOGGER.info("Minecraft MCP is listening at http://127.0.0.1:{}/mcp", server.port());
             } catch (IOException | IllegalArgumentException failure) {
                 LOGGER.error("Could not start Minecraft MCP", failure);
             }

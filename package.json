@@ -10,15 +10,17 @@
     "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
-  "files": ["lib", "locale", "protocol", "cordis.patch.yml", "icon.svg", "README.md"],
+  "files": ["lib", "locale", "protocol", "minecraft-mods", "LICENSE-XMCL", "cordis.patch.yml", "icon.svg", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && node esbuild.config.mjs",
-    "prepack": "pnpm build"
+    "build:mods": "node scripts/build-mods.mjs",
+    "prepack": "pnpm build && pnpm build:mods"
   },
   "engines": { "node": ">=24.9.0", "dsh": ">=0.2.2-rc.2 <0.3.0" },
   "packageManager": "pnpm@11.25.0",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.2"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "undici": "7.30.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.1.0",
@@ -34,6 +36,8 @@
     "@types/node": "^24.13.3",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
+    "@xmcl/core": "2.16.3",
+    "@xmcl/installer": "6.3.7",
     "esbuild": "^0.28.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",

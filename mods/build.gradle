@@ -2,21 +2,19 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.148' apply false
 }
 
-def targets = [
-    '1.21.11': ['21.11.48', 21],
-    '26.1.2': ['26.1.2.127', 25],
-    '26.2': ['26.2.0.95', 25],
-    '26.3': ['26.3.0.113', 25]
-]
+def targets = new groovy.json.JsonSlurper().parse(file('../protocol/versions.json'))
+def pluginVersion = new groovy.json.JsonSlurper().parse(file('../package.json')).version
 
 subprojects {
-    def (neoVersion, javaVersion) = targets[project.name]
+    def target = targets[project.name]
+    def neoVersion = target.neoForge
+    def javaVersion = target.javaRelease
     def adapter = project.name in ['1.21.11', '26.1.2'] ? 'legacy' : 'modern'
     apply plugin: 'java-library'
     apply plugin: 'net.neoforged.moddev'
 
     group = 'dev.dsh'
-    version = '0.1.0'
+    version = pluginVersion
 
     java.toolchain.languageVersion = JavaLanguageVersion.of(25)
     base.archivesName = "dsh-minecraft-gametest-${project.name}"
