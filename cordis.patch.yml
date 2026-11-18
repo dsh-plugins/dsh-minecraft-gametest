@@ -1,0 +1,3 @@
+- insert:
+    - id: minecraft-gametest
+      name: '@dsh-plugin/dsh-minecraft-gametest'

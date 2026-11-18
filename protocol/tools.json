@@ -1,0 +1,666 @@
+[
+  {
+    "name": "status",
+    "description": "Read Minecraft version, world, dimension and current screen. Works on the title screen.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "screenshot",
+    "description": "Capture the current Minecraft frame as a PNG.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "screenshot_ui",
+    "description": "Capture the current open screen with numbered clickable widgets or inventory slots. Also returns screen ID, layout signature and control metadata.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "control_type": {
+          "type": "string",
+          "description": "Which type of control to number or click.",
+          "enum": [
+            "widget",
+            "slot",
+            "all"
+          ]
+        }
+      },
+      "required": [
+        "control_type"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "look",
+    "description": "Turn the player to a point, named yaw and pitch, or the UUID of a loaded entity. Supply exactly one target form.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "number",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "yaw": {
+          "type": "number",
+          "description": "Yaw in degrees."
+        },
+        "pitch": {
+          "type": "number",
+          "description": "Pitch in degrees.",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "entity_uuid": {
+          "type": "string",
+          "description": "UUID returned by get_entities."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "get_entities",
+    "description": "Read loaded entities intersecting a box. The second corner is inclusive for point positions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "number",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "number",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "get_block",
+    "description": "Read the state and block entity data visible to the client at a loaded block.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "get_blocks",
+    "description": "Read block states in a loaded box, including both corner blocks. Maximum volume 4096.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "get_player",
+    "description": "Read local player position, orientation, health, hunger, inventory and other state.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "click_ui",
+    "description": "Click a numbered control on the open screen. Copy screen ID and layout signature from screenshot_ui to reject stale screenshots.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "control_type": {
+          "type": "string",
+          "description": "Which type of control to number or click.",
+          "enum": [
+            "widget",
+            "slot",
+            "all"
+          ]
+        },
+        "id": {
+          "type": "integer",
+          "description": "Number printed on the screenshot.",
+          "minimum": 1
+        },
+        "screen": {
+          "type": "string",
+          "description": "Screen ID from screenshot_ui."
+        },
+        "layout": {
+          "type": "string",
+          "description": "Layout signature from screenshot_ui."
+        },
+        "button": {
+          "type": "integer",
+          "description": "Mouse button; 0 left, 1 right, 2 middle.",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "control_type",
+        "id",
+        "screen",
+        "layout"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true
+    },
+    "record": true
+  },
+  {
+    "name": "key_input",
+    "description": "Press and release a Minecraft keyboard key. Supply a portable name such as W, SPACE, ESCAPE, LEFT_SHIFT, or F3. Hold for up to 100 client ticks.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Key name such as E, SPACE, ESCAPE, or LEFT_SHIFT."
+        },
+        "ticks": {
+          "type": "integer",
+          "description": "Number of client ticks.",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "modifiers": {
+          "type": "integer",
+          "description": "Portable modifier bit mask: shift 1, control 2, alt 4, super 8.",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true
+    },
+    "record": true
+  },
+  {
+    "name": "mouse_input",
+    "description": "Click at GUI-scaled coordinates, drag, or scroll. World clicks use the crosshair. Coordinates are required for GUI operations.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Mouse operation.",
+          "enum": [
+            "click",
+            "drag",
+            "scroll"
+          ]
+        },
+        "button": {
+          "type": "integer",
+          "description": "Mouse button: 0 left, 1 right, 2 middle.",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "x": {
+          "type": "number",
+          "description": "Start X in GUI pixels."
+        },
+        "y": {
+          "type": "number",
+          "description": "Start Y in GUI pixels."
+        },
+        "to_x": {
+          "type": "number",
+          "description": "Drag end X in GUI pixels."
+        },
+        "to_y": {
+          "type": "number",
+          "description": "Drag end Y in GUI pixels."
+        },
+        "scroll": {
+          "type": "number",
+          "description": "Signed vertical scroll amount.",
+          "minimum": -20,
+          "maximum": 20
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true
+    },
+    "record": true
+  },
+  {
+    "name": "move_to",
+    "description": "Walk to the center of a loaded target block (the player's feet). Bounded ground pathfinding supports one-block jumps and drops; maximum straight-line distance 64 blocks.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "timeout_ticks": {
+          "type": "integer",
+          "description": "Movement tick budget; default 400.",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "wait_ticks",
+    "description": "Wait a fixed number of client ticks before the next step.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "ticks": {
+          "type": "integer",
+          "description": "Number of client ticks.",
+          "minimum": 1,
+          "maximum": 1200
+        }
+      },
+      "required": [
+        "ticks"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "assert_block",
+    "description": "Assert a block ID and any supplied state properties at a loaded position.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "block": {
+          "type": "string",
+          "description": "Block ID such as minecraft:oak_log."
+        },
+        "properties": {
+          "type": "object",
+          "description": "Expected block property names and string values.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "position",
+        "block"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "assert_player_position",
+    "description": "Assert local player position is within a Euclidean tolerance.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "number",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "Allowed distance in blocks; default 0.5.",
+          "minimum": 0,
+          "maximum": 16
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "assert_screen",
+    "description": "Assert the current screen ID returned by status or screenshot_ui; use none for gameplay.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "screen": {
+          "type": "string",
+          "description": "Expected screen ID."
+        }
+      },
+      "required": [
+        "screen"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": true
+  },
+  {
+    "name": "replay_start",
+    "description": "Start replaying a version 1 recording. Poll replay_status for per-step results. The mod stops on the first failing step.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "recording": {
+          "type": "object",
+          "description": "A version 1 recording JSON object."
+        }
+      },
+      "required": [
+        "recording"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false
+    },
+    "record": false
+  },
+  {
+    "name": "replay_status",
+    "description": "Read the current or most recent replay report.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false
+    },
+    "record": false
+  }
+]

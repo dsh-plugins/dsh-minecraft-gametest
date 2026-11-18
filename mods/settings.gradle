@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://maven.neoforged.net/releases' }
+    }
+}
+
+rootProject.name = 'dsh-minecraft-gametest'
+include '1.21.11', '26.1.2', '26.2', '26.3'

@@ -1,0 +1,59 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.148' apply false
+}
+
+def targets = [
+    '1.21.11': ['21.11.48', 21],
+    '26.1.2': ['26.1.2.127', 25],
+    '26.2': ['26.2.0.95', 25],
+    '26.3': ['26.3.0.113', 25]
+]
+
+subprojects {
+    def (neoVersion, javaVersion) = targets[project.name]
+    def adapter = project.name in ['1.21.11', '26.1.2'] ? 'legacy' : 'modern'
+    apply plugin: 'java-library'
+    apply plugin: 'net.neoforged.moddev'
+
+    group = 'dev.dsh'
+    version = '0.1.0'
+
+    java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+    base.archivesName = "dsh-minecraft-gametest-${project.name}"
+
+    sourceSets.main {
+        java.srcDir rootProject.file('shared/src/main/java')
+        java.srcDir rootProject.file("shared/src/${adapter}/java")
+        resources.srcDir rootProject.file('shared/src/main/resources')
+    }
+
+    neoForge {
+        version = neoVersion
+        accessTransformers.from rootProject.file('shared/src/main/resources/META-INF/accesstransformer.cfg')
+        runs {
+            client {
+                client()
+                gameDirectory = project.file('run')
+                def port = project.providers.gradleProperty('gametestPort')
+                if (port.present) systemProperty 'dsh.gametest.port', port.get()
+            }
+        }
+        mods {
+            dsh_gametest {
+                sourceSet sourceSets.main
+            }
+        }
+    }
+
+    processResources {
+        from(rootProject.file('../protocol/tools.json'))
+        def properties = [modVersion: project.version, minecraftVersion: project.name, neoVersion: neoVersion]
+        inputs.properties properties
+        filesMatching('META-INF/neoforge.mods.toml') { expand properties }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = javaVersion as int
+    }
+}

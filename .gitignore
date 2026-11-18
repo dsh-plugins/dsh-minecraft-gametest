@@ -1,0 +1,8 @@
+node_modules/
+lib/
+*.tgz
+.gradle/
+build/
+run/
+minecraft-tests/
+.dsh-test/

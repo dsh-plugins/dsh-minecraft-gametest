@@ -1,0 +1,47 @@
+{
+  "name": "@dsh-plugin/dsh-minecraft-gametest",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Minecraft Java MCP controls, test recording, and NeoForge replay for DeepSeek Harness",
+  "exports": {
+    ".": { "types": "./lib/index.d.ts", "default": "./lib/index.js" },
+    "./client": "./lib/client.js",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "locale", "protocol", "cordis.patch.yml", "icon.svg", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && node esbuild.config.mjs",
+    "test": "pnpm build && node --test tests/*.test.mjs",
+    "prepack": "pnpm build"
+  },
+  "engines": { "node": ">=24.9.0", "dsh": ">=0.2.2-rc.2 <0.3.0" },
+  "packageManager": "pnpm@11.25.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-attachment": ">=0.2.2-rc.2 <0.3.0",
+    "@dsh-plugin/dsh-loader": "^2.0.0-dev.43799314028"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-attachment": "0.2.2-rc.4",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.4",
+    "@dsh-plugin/dsh-loader": "2.0.0-dev.43799314028",
+    "@dsh-plugin/dsh-ui-components": "0.1.0-dev.44257064993",
+    "@types/node": "^24.13.3",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "esbuild": "^0.28.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.9.3"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "inject": ["@dsh-plugin/dsh-loader"], "platform": "web" }
+  }
+}

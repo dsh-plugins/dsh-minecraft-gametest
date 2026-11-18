@@ -1,0 +1,25 @@
+- id: llm-pi-ai
+  config:
+    providers:
+      anvilcraft:
+        displayName: AnvilCraft
+        baseURL: https://ai.anvilcraft.dev
+        apiKeyEnv: ANVILCRAFT_AI_API_KEY
+        api: openai-responses
+        reasoning: max
+        retryPolicy:
+          mode: always
+        models:
+          - id: deepseek-v4.1-flash
+            contextWindow: 1000000
+            maxTokens: 384000
+            input: [text, image]
+            reasoningEfforts:
+              low: low
+              high: high
+              max: max
+- id: agent-default-model
+  config:
+    provider: anvilcraft
+    model: deepseek-v4.1-flash
+    reasoningEffort: max
