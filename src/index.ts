@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-attachment'
 import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { HostAPI } from '@dsh-plugin/dsh-loader'
 import { ConfigError, defineConfig } from '@dsh-plugin/dsh-loader/config'
-import { MinecraftMcp } from './mcp.js'
+import { MinecraftMcp, type Connection } from './mcp.js'
 import { Recordings } from './recordings.js'
 
 export const name = '@dsh-plugin/dsh-minecraft-gametest'
@@ -52,6 +52,7 @@ interface ToolSpec {
   description: string
   inputSchema: McpSchema
   record: boolean
+  recordActions?: string[]
 }
 
 const toolSpecs = JSON.parse(readFileSync(new URL('../protocol/tools.json', import.meta.url), 'utf8')) as ToolSpec[]
@@ -81,6 +82,7 @@ export async function apply(ctx: Context & { dshLoader: HostAPI }) {
   const recordings = new Recordings()
   const mcp = new MinecraftMcp()
   let tail = Promise.resolve<unknown>(undefined)
+  let recordedTask: { id: number, args: Record<string, unknown>, connection: Connection } | undefined
 
   // Keep model tools and Web diagnostics in the same order at the game connection.
   function serial<T>(task: () => Promise<T>) {
@@ -99,6 +101,22 @@ export async function apply(ctx: Context & { dshLoader: HostAPI }) {
   const directory = (exec: ToolRunContext) => {
     const cwd = exec.agent?.session.header.cwd ?? process.cwd()
     return resolve(cwd, String(settings().recordingsDirectory || 'minecraft-tests'))
+  }
+
+  async function settleRecordedTask(status?: Record<string, unknown>, requireCompletion = false) {
+    if (!recordedTask) return
+    const task = recordedTask
+    const data = status ?? (await mcp.call(task.connection, 'task', { action: 'status' })).data
+    if (data.task_id !== task.id) {
+      recordedTask = undefined
+      throw new Error('The Minecraft task was replaced before its outcome could be recorded')
+    }
+    if (data.state === 'running' || data.state === 'paused') {
+      if (requireCompletion) throw new Error('Wait for the recorded Minecraft task to finish or cancel it first')
+      return
+    }
+    recordedTask = undefined
+    if (data.state === 'succeeded') await recordings.append('task', task.args)
   }
 
   const registry = ctx.dshLoader.services.get('tools') as {
@@ -144,11 +162,22 @@ export async function apply(ctx: Context & { dshLoader: HostAPI }) {
   for (const tool of toolSpecs) {
     if (tool.name === 'replay_start') continue
     register(tool.name, tool.description, dshSchema(tool.inputSchema), async (args, exec) => {
-      if (tool.record) recordings.checkAction(owner(exec))
-      // Once a replayable action is dispatched, read its outcome and persist it before
-      // returning. Aborting the local HTTP request cannot roll a Minecraft action back.
-      const result = await mcp.call(connection(), tool.name, args, tool.record ? undefined : exec.signal)
+      const action = typeof args.action === 'string' ? args.action.replace(/^#/, '') : ''
+      const taskStarts = tool.recordActions?.includes(action) === true
+      const taskMutates = tool.name === 'task' && !['status', 'paused'].includes(action)
+      if (tool.record || taskStarts) {
+        recordings.checkOwner(owner(exec))
+        await settleRecordedTask(undefined, true)
+        recordings.checkAction(owner(exec))
+      } else if (taskMutates && recordedTask) recordings.checkOwner(owner(exec))
+      const destination = tool.name === 'task' ? recordedTask?.connection ?? connection() : connection()
+      // Read an already dispatched action's outcome even if the caller cancels its turn.
+      const result = await mcp.call(destination, tool.name, args, tool.record || taskMutates ? undefined : exec.signal)
       if (tool.record) await recordings.append(tool.name, args)
+      if (taskStarts && recordings.status().recording) {
+        if (typeof result.data.task_id !== 'number') throw new Error('Minecraft did not return an automation task ID')
+        recordedTask = { id: result.data.task_id, args, connection: destination }
+      } else if (tool.name === 'task') await settleRecordedTask(result.data)
       if (!result.image) return { data: result.data }
       const attachment = await ctx.attachments.saveImage({
         data: new Uint8Array(Buffer.from(result.image.data, 'base64')),
@@ -162,12 +191,19 @@ export async function apply(ctx: Context & { dshLoader: HostAPI }) {
   register('recording_start', 'Start saving successful Minecraft actions and explicit assertions to a new named test recording. Join the test world first.', structuredClone(namedRecording), async (args, exec) => {
     const { data } = await mcp.call(connection(), 'status', {}, exec.signal)
     if (!data.in_world || typeof data.minecraft !== 'string' || typeof data.dimension !== 'string') throw new Error('Join a Minecraft world first')
+    const { data: task } = await mcp.call(connection(), 'task', { action: 'status' }, exec.signal)
+    if (task.state === 'running' || task.state === 'paused') throw new Error('Finish the active Minecraft task before recording')
     exec.signal.throwIfAborted()
     return { data: await recordings.start(owner(exec), directory(exec), String(args.name), data.minecraft, data.dimension) }
   })
   const noArgs = { type: 'object', additionalProperties: false, properties: {} } as const
   register('recording_status', 'Read the active Minecraft recording and number of saved steps.', noArgs, async () => ({ data: recordings.status() }))
-  register('recording_stop', 'Finish the active Minecraft recording. Returns the path of the saved JSON test.', noArgs, async (_args, exec) => ({ data: await recordings.stop(owner(exec)) }))
+  register('recording_stop', 'Finish the active Minecraft recording. Returns the path of the saved JSON test.', noArgs, async (_args, exec) => {
+    const session = owner(exec)
+    recordings.checkOwner(session)
+    await settleRecordedTask(undefined, true)
+    return { data: await recordings.stop(session) }
+  })
   register('replay', 'Start replaying a saved named Minecraft recording in the mod. Poll mc_replay_status for the report.', structuredClone(namedRecording), async (args, exec) => {
     const recording = await recordings.load(directory(exec), String(args.name), exec.signal)
     exec.signal.throwIfAborted()

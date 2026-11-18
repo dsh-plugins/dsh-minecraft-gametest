@@ -11,6 +11,7 @@ final class GameBridge {
     private final GameUi ui;
     private final Controls controls;
     private final WorldTools world;
+    private final Automation automation;
     private Pending pending;
     private Replay replay;
     private long tick;
@@ -20,6 +21,7 @@ final class GameBridge {
         ui = new GameUi(client);
         controls = new Controls(client, ui);
         world = new WorldTools(client);
+        automation = new Automation(client, world);
     }
 
     CompletableFuture<ToolResult> submit(String name, JsonObject args) {
@@ -28,19 +30,31 @@ final class GameBridge {
             if (result.isCancelled()) return;
             try {
                 ToolCatalog.validate(name, args);
+                var arguments = new Arguments(args);
                 if (name.equals("replay_status")) result.complete(ToolResult.ok(replayReport()));
                 else if (name.equals("status")) result.complete(ToolResult.ok(world.status()));
-                else if (pending != null || (replay != null && !replay.done())) {
+                else if (name.equals("task") && Automation.control(Automation.action(arguments))) {
+                    result.complete(ToolResult.ok(automation.command(Automation.action(arguments))));
+                } else if (pending != null || (replay != null && !replay.done())) {
                     result.complete(ToolResult.error("Another game action or replay is running"));
+                } else if (automation.busy() && !observable(name)) {
+                    result.complete(ToolResult.error("A task is running or paused; wait for it or cancel it first"));
+                } else if (name.equals("task")) {
+                    automation.start(arguments);
+                    result.complete(ToolResult.ok(automation.report()));
                 } else if (name.equals("replay_start")) {
                     replay = parseReplay(args.getAsJsonObject("recording"));
                     result.complete(ToolResult.ok(replayReport()));
-                } else begin(name, new Arguments(args), result);
+                } else begin(name, arguments, result);
             } catch (RuntimeException failure) {
                 result.complete(error(failure));
             }
         }, result);
         return result;
+    }
+
+    private static boolean observable(String name) {
+        return name.startsWith("get_") || name.equals("screenshot") || name.equals("screenshot_ui");
     }
 
     private void startOnClient(Runnable action, CompletableFuture<ToolResult> future) {
@@ -53,6 +67,7 @@ final class GameBridge {
 
     void tick() {
         tick++;
+        automation.tick();
         if (pending != null) {
             if (pending.result.isCancelled()) {
                 cancelPending();
@@ -101,7 +116,10 @@ final class GameBridge {
             case "click_ui" -> controls.clickControl(args);
             case "key_input" -> controls.key(args);
             case "mouse_input" -> controls.mouse(args);
-            case "move_to" -> new GroundPath(client, args);
+            case "task" -> {
+                var running = automation.start(args);
+                yield () -> running.result;
+            }
             case "look" -> after(1, world.execute(name, args));
             case "wait_ticks" -> after(args.integer("ticks"), new JsonObject());
             default -> {
@@ -142,15 +160,17 @@ final class GameBridge {
         var parsed = new ArrayList<Step>();
         for (JsonElement item : steps) {
             if (!(item instanceof JsonObject step) || !(step.get("tool") instanceof JsonPrimitive name) || !name.isString()
-                || !(step.get("arguments") instanceof JsonObject args) || !ToolCatalog.replayable(name.getAsString())) {
-                throw new IllegalArgumentException("Invalid or non-replayable tool at step " + (parsed.size() + 1));
+                || !(step.get("arguments") instanceof JsonObject rawArgs)) {
+                throw new IllegalArgumentException("Invalid tool at step " + (parsed.size() + 1));
             }
+            String tool = name.getAsString();
             try {
-                ToolCatalog.validate(name.getAsString(), args);
+                ToolCatalog.validate(tool, rawArgs);
+                if (!ToolCatalog.replayable(tool, rawArgs)) throw new IllegalArgumentException("Tool or action is not replayable");
             } catch (IllegalArgumentException failure) {
                 throw new IllegalArgumentException("Step " + (parsed.size() + 1) + ": " + failure.getMessage());
             }
-            parsed.add(new Step(name.getAsString(), args.deepCopy()));
+            parsed.add(new Step(tool, rawArgs.deepCopy()));
         }
         return new Replay(recording.has("name") ? recording.get("name").getAsString() : "recording", parsed, client.level, client.player, tick + 1);
     }
@@ -170,7 +190,7 @@ final class GameBridge {
         return report;
     }
 
-    private static ToolResult error(RuntimeException failure) {
+    static ToolResult error(RuntimeException failure) {
         if (!(failure instanceof IllegalArgumentException || failure instanceof IllegalStateException)) {
             GameTestMod.LOGGER.error("Unhandled Minecraft MCP tool error", failure);
         }
@@ -190,6 +210,8 @@ final class GameBridge {
 
     interface GameTask {
         ToolResult tick();
+        default JsonObject progress() { return new JsonObject(); }
+        default void pause() {}
         default void close() {}
     }
 

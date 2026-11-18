@@ -84,12 +84,18 @@ final class WorldTools {
         player.setXRot((float) pitch);
     }
 
-    private Entity entity(UUID id) {
+    Entity entity(UUID id) {
+        Entity found = findEntity(id);
+        if (found == null) throw new IllegalArgumentException("Entity UUID is not loaded");
+        return found;
+    }
+
+    Entity findEntity(UUID id) {
         if (player().getUUID().equals(id)) return player();
         for (Entity entity : level().entitiesForRendering()) {
             if (entity.getUUID().equals(id)) return entity;
         }
-        throw new IllegalArgumentException("Entity UUID is not loaded");
+        return null;
     }
 
     private JsonObject entities(Arguments args) {

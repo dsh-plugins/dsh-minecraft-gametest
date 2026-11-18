@@ -24,19 +24,25 @@ final class ToolCatalog {
         for (JsonObject tool : TOOLS.values()) {
             JsonObject copy = tool.deepCopy();
             copy.remove("record");
+            copy.remove("recordActions");
             result.add(copy);
         }
         return result;
     }
 
-    static boolean replayable(String tool) {
-        return TOOLS.containsKey(tool) && TOOLS.get(tool).get("record").getAsBoolean();
+    static boolean replayable(String tool, JsonObject args) {
+        JsonObject info = TOOLS.get(tool);
+        if (info == null) return false;
+        if (info.get("record").getAsBoolean()) return true;
+        if (!(args.get("action") instanceof JsonPrimitive action) || !action.isString() || !info.has("recordActions")) return false;
+        return info.getAsJsonArray("recordActions").contains(new JsonPrimitive(Automation.action(new Arguments(args))));
     }
 
     static void validate(String tool, JsonObject args) {
         JsonObject definition = TOOLS.get(tool);
         if (definition == null) throw new IllegalArgumentException("Unknown tool " + tool);
         validate(definition.getAsJsonObject("inputSchema"), args, "arguments");
+        if (tool.equals("task")) Automation.validate(new Arguments(args));
     }
 
     private static void validate(JsonObject schema, JsonElement value, String path) {

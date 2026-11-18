@@ -7,17 +7,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 final class GroundPath implements GameBridge.GameTask {
     private static final int SEARCH_LIMIT = 4096;
     private static final double FINAL_RADIUS = 0.27;
-    private static final Direction[] HORIZONTAL = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
+    static final Direction[] HORIZONTAL = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
 
     private final Minecraft client;
     private final ClientLevel level;
@@ -26,22 +29,33 @@ final class GroundPath implements GameBridge.GameTask {
     private final ArrayDeque<BlockPos> waypoints;
     private int remaining;
 
-    GroundPath(Minecraft client, Arguments args) {
+    GroundPath(Minecraft client, BlockPos target, int timeout) {
+        this(client, target, target::equals,
+            pos -> 10 * (Math.abs(pos.getX() - target.getX()) + Math.abs(pos.getZ() - target.getZ())), timeout);
+    }
+
+    static GroundPath find(Minecraft client, Predicate<BlockPos> goal, int timeout) {
+        return new GroundPath(client, null, goal, pos -> 0, timeout);
+    }
+
+    private GroundPath(Minecraft client, BlockPos target, Predicate<BlockPos> acceptable, ToIntFunction<BlockPos> heuristic, int timeout) {
         this.client = client;
         level = client.level;
         player = client.player;
         if (level == null || player == null) throw new IllegalStateException("Join a world first");
         if (Platform.screen(client) != null) throw new IllegalStateException("Close the screen before moving");
-        if (!player.onGround() && !player.getAbilities().flying) throw new IllegalStateException("Start movement on the ground");
         if (player.getAbilities().flying || player.isPassenger()) throw new IllegalStateException("Dismount or stop flying before moving");
-        goal = args.block("position");
-        WorldTools.requireLoaded(level, goal);
-        if (player.position().distanceTo(Vec3.atBottomCenterOf(goal)) > 64) {
-            throw new IllegalArgumentException("Target is more than 64 blocks away");
+        if (!player.onGround()) throw new IllegalStateException("Start movement on the ground");
+        if (target != null) {
+            WorldTools.requireLoaded(level, target);
+            if (player.position().distanceTo(Vec3.atBottomCenterOf(target)) > 64) {
+                throw new IllegalArgumentException("Target is more than 64 blocks away");
+            }
+            if (!standable(level, target)) throw new IllegalArgumentException("Target has no safe standing space");
         }
-        if (!standable(goal)) throw new IllegalArgumentException("Target has no safe standing space");
-        waypoints = plan(player.blockPosition());
-        remaining = args.integer("timeout_ticks", 400);
+        waypoints = plan(feet(player), acceptable, heuristic);
+        goal = waypoints.getLast();
+        remaining = timeout;
     }
 
     @Override
@@ -57,7 +71,7 @@ final class GroundPath implements GameBridge.GameTask {
         }
         while (waypoints.size() > 1 && near(waypoints.getFirst(), 0.34)) waypoints.removeFirst();
         BlockPos waypoint = waypoints.getFirst();
-        if (!standable(waypoint)) return ToolResult.error("Movement path is now blocked at " + waypoint.toShortString());
+        if (!standable(level, waypoint)) return ToolResult.error("Movement path is now blocked at " + waypoint.toShortString());
         Vec3 dest = Vec3.atBottomCenterOf(waypoint).subtract(player.position());
         double yaw = Math.toDegrees(Math.atan2(-dest.x, dest.z));
         WorldTools.orient(player, yaw, player.getXRot());
@@ -72,6 +86,9 @@ final class GroundPath implements GameBridge.GameTask {
     }
 
     @Override
+    public void pause() { close(); }
+
+    @Override
     public void close() {
         client.options.keyUp.setDown(false);
         client.options.keyJump.setDown(false);
@@ -79,20 +96,20 @@ final class GroundPath implements GameBridge.GameTask {
 
     private record Node(BlockPos position, int cost, int priority) {}
 
-    private ArrayDeque<BlockPos> plan(BlockPos start) {
-        if (start.equals(goal)) return new ArrayDeque<>(List.of(goal));
+    private ArrayDeque<BlockPos> plan(BlockPos start, Predicate<BlockPos> acceptable, ToIntFunction<BlockPos> heuristic) {
+        if (acceptable.test(start) && standable(level, start)) return new ArrayDeque<>(List.of(start));
         var queue = new PriorityQueue<>(Comparator.comparingInt(Node::priority).thenComparingInt(Node::cost));
         Map<BlockPos, Integer> costs = new HashMap<>();
         Map<BlockPos, BlockPos> previous = new HashMap<>();
         costs.put(start, 0);
-        queue.add(new Node(start, 0, heuristic(start)));
+        queue.add(new Node(start, 0, heuristic.applyAsInt(start)));
         int visited = 0;
         while (!queue.isEmpty() && visited < SEARCH_LIMIT) {
             Node node = queue.remove();
             if (node.cost != costs.get(node.position)) continue;
-            if (node.position.equals(goal)) {
+            if (acceptable.test(node.position) && standable(level, node.position)) {
                 var path = new ArrayDeque<BlockPos>();
-                for (BlockPos pos = goal; !pos.equals(start); pos = previous.get(pos)) path.addFirst(pos);
+                for (BlockPos pos = node.position; !pos.equals(start); pos = previous.get(pos)) path.addFirst(pos);
                 return path;
             }
             visited++;
@@ -103,7 +120,7 @@ final class GroundPath implements GameBridge.GameTask {
                 if (cost >= costs.getOrDefault(candidate, Integer.MAX_VALUE)) continue;
                 costs.put(candidate, cost);
                 previous.put(candidate, node.position);
-                queue.add(new Node(candidate, cost, cost + heuristic(candidate)));
+                queue.add(new Node(candidate, cost, cost + heuristic.applyAsInt(candidate)));
             }
         }
         throw new IllegalStateException("No ground path found within " + SEARCH_LIMIT + " positions");
@@ -111,25 +128,25 @@ final class GroundPath implements GameBridge.GameTask {
 
     private BlockPos next(BlockPos current, Direction direction) {
         BlockPos adjacent = current.relative(direction);
-        if (standable(adjacent)) return adjacent;
-        if (clear(current.above(2)) && standable(adjacent.above())) return adjacent.above();
-        if (clear(adjacent) && clear(adjacent.above()) && standable(adjacent.below())) return adjacent.below();
+        if (standable(level, adjacent)) return adjacent;
+        if (clear(level, current.above(2)) && standable(level, adjacent.above())) return adjacent.above();
+        if (clear(level, adjacent) && clear(level, adjacent.above()) && standable(level, adjacent.below())) return adjacent.below();
         return null;
     }
 
-    private int heuristic(BlockPos pos) {
-        return 10 * (Math.abs(pos.getX() - goal.getX()) + Math.abs(pos.getZ() - goal.getZ()));
+    static BlockPos feet(LocalPlayer player) {
+        return BlockPos.containing(player.getX(), player.getY() + 0.15, player.getZ());
     }
 
-    private boolean standable(BlockPos feet) {
+    static boolean standable(ClientLevel level, BlockPos feet) {
         BlockPos floor = feet.below();
-        return level.getWorldBorder().isWithinBounds(feet) && clear(feet) && clear(feet.above())
+        return level.getWorldBorder().isWithinBounds(feet) && clear(level, feet) && clear(level, feet.above())
             && !level.isOutsideBuildHeight(floor)
-            && level.getBlockState(floor).isFaceSturdy(level, floor, Direction.UP)
+            && (level.getBlockState(floor).isFaceSturdy(level, floor, Direction.UP) || level.getBlockState(floor).is(Blocks.FARMLAND))
             && level.getFluidState(floor).isEmpty();
     }
 
-    private boolean clear(BlockPos position) {
+    static boolean clear(ClientLevel level, BlockPos position) {
         return !level.isOutsideBuildHeight(position) && level.hasChunkAt(position)
             && level.getBlockState(position).getCollisionShape(level, position).isEmpty()
             && level.getFluidState(position).isEmpty();

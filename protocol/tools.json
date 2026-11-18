@@ -434,53 +434,6 @@
     "record": true
   },
   {
-    "name": "move_to",
-    "description": "Walk to the center of a loaded target block (the player's feet). Bounded ground pathfinding supports one-block jumps and drops; maximum straight-line distance 64 blocks.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "position": {
-          "type": "object",
-          "properties": {
-            "x": {
-              "type": "integer",
-              "description": "X coordinate."
-            },
-            "y": {
-              "type": "integer",
-              "description": "Y coordinate."
-            },
-            "z": {
-              "type": "integer",
-              "description": "Z coordinate."
-            }
-          },
-          "required": [
-            "x",
-            "y",
-            "z"
-          ],
-          "additionalProperties": false
-        },
-        "timeout_ticks": {
-          "type": "integer",
-          "description": "Movement tick budget; default 400.",
-          "minimum": 1,
-          "maximum": 1000
-        }
-      },
-      "required": [
-        "position"
-      ],
-      "additionalProperties": false
-    },
-    "annotations": {
-      "readOnlyHint": false,
-      "destructiveHint": false
-    },
-    "record": true
-  },
-  {
     "name": "wait_ticks",
     "description": "Wait a fixed number of client ticks before the next step.",
     "inputSchema": {
@@ -625,6 +578,209 @@
       "destructiveHint": false
     },
     "record": true
+  },
+  {
+    "name": "task",
+    "description": "Run one Minecraft automation task at a time. Actions: move_to, tunnel (horizontal 1x2 tunnel), farm (harvest or tend crops), mine (break and collect), follow, surface, elytra, status, pause, paused, resume, cancel. Starts return a task ID; poll status for completion. pause releases task inputs. Action names also accept a leading #.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Task action. Names can be prefixed with #.",
+          "enum": [
+            "move_to",
+            "tunnel",
+            "farm",
+            "mine",
+            "follow",
+            "surface",
+            "elytra",
+            "status",
+            "pause",
+            "paused",
+            "resume",
+            "cancel",
+            "#move_to",
+            "#tunnel",
+            "#farm",
+            "#mine",
+            "#follow",
+            "#surface",
+            "#elytra",
+            "#status",
+            "#pause",
+            "#paused",
+            "#resume",
+            "#cancel"
+          ]
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false,
+          "description": "Target feet block (move_to) or target point at the block center (elytra)."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Tunnel bearing; default is current facing.",
+          "enum": [
+            "north",
+            "south",
+            "east",
+            "west"
+          ]
+        },
+        "length": {
+          "type": "integer",
+          "description": "Number of 1x2 sections to dig (tunnel); default 8.",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "block": {
+          "type": "string",
+          "description": "Block registry ID to mine, such as minecraft:coal_ore (required for mine)."
+        },
+        "from": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false,
+          "description": "First corner of the inclusive mine/farm area. Supply both corners."
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate."
+            },
+            "z": {
+              "type": "integer",
+              "description": "Z coordinate."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "additionalProperties": false,
+          "description": "Second corner of the inclusive mine/farm area."
+        },
+        "radius": {
+          "type": "integer",
+          "description": "Horizontal search radius if no corners are given (mine/farm). Default 12.",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "count": {
+          "type": "integer",
+          "description": "Maximum blocks mined or crops tended/harvested; default 16.",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "crop": {
+          "type": "string",
+          "description": "Crop to grow or harvest (farm); omit to harvest all supported crops.",
+          "enum": [
+            "wheat",
+            "carrots",
+            "potatoes",
+            "beetroots",
+            "nether_wart"
+          ]
+        },
+        "farm_mode": {
+          "type": "string",
+          "description": "How to farm. harvest only breaks mature crops; replant also plants or replaces them; till also prepares suitable soil. Default harvest.",
+          "enum": [
+            "harvest",
+            "replant",
+            "till"
+          ]
+        },
+        "entity_uuid": {
+          "type": "string",
+          "description": "Loaded entity to follow (required for follow)."
+        },
+        "distance": {
+          "type": "number",
+          "description": "Follow distance in blocks; default 3.",
+          "minimum": 1.5,
+          "maximum": 16
+        },
+        "duration_ticks": {
+          "type": "integer",
+          "description": "Active follow duration; default 600. Paused ticks are excluded.",
+          "minimum": 1,
+          "maximum": 24000
+        },
+        "timeout_ticks": {
+          "type": "integer",
+          "description": "Task tick limit excluding pauses. Default depends on the action.",
+          "minimum": 1,
+          "maximum": 24000
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true
+    },
+    "record": false,
+    "recordActions": [
+      "move_to",
+      "tunnel",
+      "farm",
+      "mine",
+      "follow",
+      "surface",
+      "elytra"
+    ]
   },
   {
     "name": "replay_start",

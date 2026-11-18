@@ -65,9 +65,13 @@ export class Recordings {
     return this.status()
   }
 
+  checkOwner(owner: string) {
+    if (this.active && this.active.owner !== owner) throw new Error('Another DSH session is recording Minecraft')
+  }
+
   checkAction(owner: string) {
+    this.checkOwner(owner)
     if (!this.active) return
-    if (this.active.owner !== owner) throw new Error('Another DSH session is recording Minecraft')
     if (this.active.unsaved) throw new Error('A step could not be saved. Use mc_recording_stop to retry saving.')
     if (this.active.value.steps.length >= MAX_STEPS) throw new Error('Recording is full. Stop it before running more actions.')
   }
