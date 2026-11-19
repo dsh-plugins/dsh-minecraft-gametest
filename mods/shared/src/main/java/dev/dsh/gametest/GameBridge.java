@@ -136,7 +136,12 @@ final class GameBridge {
         GameTask task = switch (name) {
             case "screenshot" -> ui.screenshot(null);
             case "screenshot_ui" -> ui.screenshot(args.text("control_type"));
+            case "get_container" -> {
+                result.complete(ToolResult.ok(ui.layout("slot").metadata()));
+                yield null;
+            }
             case "click_ui" -> controls.clickControl(args);
+            case "assert_container_slot" -> ui.assertSlot(args);
             case "key_input" -> controls.key(args);
             case "mouse_input" -> controls.mouse(args);
             case "run_command" -> commandFeedback.run(args);

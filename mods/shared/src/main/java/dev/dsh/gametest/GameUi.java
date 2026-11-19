@@ -25,6 +25,10 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 
 final class GameUi {
     private final Minecraft client;
@@ -48,7 +52,7 @@ final class GameUi {
             for (var slot : container.getMenu().slots) {
                 if (!slot.isActive()) continue;
                 controls.add(new Control(controls.size() + 1, "slot", "", slot.index,
-                    container.leftPos + slot.x, container.topPos + slot.y, 16, 16));
+                    container.leftPos + slot.x, container.topPos + slot.y, 16, 16, slotContents(slot)));
             }
         }
         var metadata = new JsonObject();
@@ -72,13 +76,68 @@ final class GameUi {
         return new Layout(screen, controls, metadata);
     }
 
+    GameBridge.GameTask assertSlot(Arguments args) {
+        int index = args.integer("slot");
+        return new GameBridge.GameTask() {
+            int remaining = args.integer("wait_ticks", 40);
+
+            @Override
+            public ToolResult tick() {
+                String mismatch = checkSlot(args, index);
+                if (mismatch == null) {
+                    var screen = (AbstractContainerScreen<?>) Platform.screen(client);
+                    var result = slotContents(screen.getMenu().getSlot(index));
+                    result.addProperty("title", screen.getTitle().getString());
+                    result.addProperty("slot", index);
+                    return ToolResult.ok(result);
+                }
+                return remaining-- == 0 ? ToolResult.error(mismatch) : null;
+            }
+        };
+    }
+
+    private String checkSlot(Arguments args, int index) {
+        if (!(Platform.screen(client) instanceof AbstractContainerScreen<?> screen)) return "No container screen is open";
+        String title = screen.getTitle().getString();
+        if (args.has("title") && !args.text("title").equals(title)) {
+            return "Expected container title " + args.text("title") + " but found " + title;
+        }
+        if (index >= screen.getMenu().slots.size() || !screen.getMenu().getSlot(index).isActive()) {
+            return "No active container menu slot " + index;
+        }
+        var stack = screen.getMenu().getSlot(index).getItem();
+        String item = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        String label = stack.isEmpty() ? "" : stack.getHoverName().getString();
+        if (args.has("item") && !args.text("item").equals(item)
+            || args.has("name") && !args.text("name").equals(label)
+            || args.has("count") && args.integer("count") != stack.getCount()) {
+            return "Container menu slot " + index + " in " + title + " contains " + item + " (" + label + ") ×" + stack.getCount();
+        }
+        return null;
+    }
+
+    private static JsonObject slotContents(Slot slot) {
+        var stack = slot.getItem();
+        var details = new JsonObject();
+        details.addProperty("item", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        details.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
+        details.addProperty("count", stack.getCount());
+        var lore = new JsonArray();
+        var loreComponent = stack.get(DataComponents.LORE);
+        if (loreComponent != null) loreComponent.lines().forEach(line -> lore.add(line.getString()));
+        details.add("lore", lore);
+        details.addProperty("slot_signature", digest(details.toString()));
+        details.addProperty("area", slot.container instanceof Inventory ? "player" : "container");
+        return details;
+    }
+
     private static void widgets(ContainerEventHandler parent, List<Control> controls, int width, int height) {
         for (var child : parent.children()) {
             if (child instanceof AbstractWidget widget && !(widget instanceof AbstractStringWidget) && widget.visible && widget.isActive()
                 && widget.getWidth() > 0 && widget.getHeight() > 0 && widget.getX() >= 0 && widget.getY() >= 0
                 && widget.getX() + widget.getWidth() <= width && widget.getY() + widget.getHeight() <= height) {
                 controls.add(new Control(controls.size() + 1, "widget", widget.getMessage().getString(), -1,
-                    widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight()));
+                    widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight(), null));
             } else if (child instanceof ContainerEventHandler nested) {
                 widgets(nested, controls, width, height);
             }
@@ -175,9 +234,9 @@ final class GameUi {
 
     record Layout(Screen screen, List<Control> controls, JsonObject metadata) {}
 
-    record Control(int id, String kind, String label, int slot, int x, int y, int width, int height) {
+    record Control(int id, String kind, String label, int slot, int x, int y, int width, int height, JsonObject contents) {
         JsonObject json() {
-            var data = new JsonObject();
+            var data = contents == null ? new JsonObject() : contents.deepCopy();
             data.addProperty("id", id);
             data.addProperty("type", kind);
             if (kind.equals("slot")) data.addProperty("slot", slot);

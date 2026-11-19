@@ -41,7 +41,7 @@
   },
   {
     "name": "screenshot_ui",
-    "description": "Capture the current open screen with numbered clickable widgets or inventory slots. Also returns screen ID, layout signature and control metadata.",
+    "description": "Capture the current open screen with numbered clickable widgets or inventory slots. Also returns the screen ID, layout signature and control metadata. Container slots include their item ID, name (label), count, lore, area and slot_signature.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -306,8 +306,19 @@
     "record": false
   },
   {
+    "name": "get_container",
+    "description": "Read the open container title and numbered slots without taking an image. Each slot includes its zero-based menu slot index, item ID, display name (label), count, lore, area (container or player) and slot_signature. Use id, screen, layout and slot_signature to click the intended item.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": { "readOnlyHint": true },
+    "record": false
+  },
+  {
     "name": "click_ui",
-    "description": "Click a numbered control on the open screen. Copy screen ID and layout signature from screenshot_ui to reject stale screenshots.",
+    "description": "Click a numbered control on the open screen. Copy screen ID and layout from screenshot_ui or get_container. For a container slot pass slot_signature from the chosen control to reject clicks after the item changes.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -322,16 +333,20 @@
         },
         "id": {
           "type": "integer",
-          "description": "Number printed on the screenshot.",
+          "description": "Number printed on the screenshot or returned as id by get_container.",
           "minimum": 1
         },
         "screen": {
           "type": "string",
-          "description": "Screen ID from screenshot_ui."
+          "description": "Screen ID from screenshot_ui or get_container."
         },
         "layout": {
           "type": "string",
-          "description": "Layout signature from screenshot_ui."
+          "description": "Layout signature from screenshot_ui or get_container."
+        },
+        "slot_signature": {
+          "type": "string",
+          "description": "Optional signature of the specific slot's item ID, display name, count and lore. Copy it before clicking a container slot."
         },
         "button": {
           "type": "integer",
@@ -587,6 +602,34 @@
       "readOnlyHint": false,
       "destructiveHint": false
     },
+    "record": true
+  },
+  {
+    "name": "assert_container_slot",
+    "description": "Wait for an open container menu slot to contain the expected item ID, exact display name or count. Requires at least one of item, name or count. Use this after a server-driven click to wait for the page and during replay to verify outcomes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "integer",
+          "description": "Zero-based menu slot index from the slot field of get_container or screenshot_ui.",
+          "minimum": 0
+        },
+        "title": { "type": "string", "description": "Optional exact container title." },
+        "item": { "type": "string", "description": "Expected Minecraft item ID, or minecraft:air for an empty slot." },
+        "name": { "type": "string", "description": "Expected exact display name, called label in container metadata." },
+        "count": { "type": "integer", "description": "Expected stack size. Use 0 for an empty slot.", "minimum": 0 },
+        "wait_ticks": {
+          "type": "integer",
+          "description": "Maximum number of client ticks to wait for synchronization. Default 40. Use 0 for an immediate check.",
+          "minimum": 0,
+          "maximum": 200
+        }
+      },
+      "required": ["slot"],
+      "additionalProperties": false
+    },
+    "annotations": { "readOnlyHint": true },
     "record": true
   },
   {

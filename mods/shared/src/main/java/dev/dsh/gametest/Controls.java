@@ -57,6 +57,10 @@ final class Controls {
         int id = args.integer("id");
         if (id > layout.controls().size()) throw new IllegalArgumentException("Unknown UI control " + id);
         GameUi.Control control = layout.controls().get(id - 1);
+        if (args.has("slot_signature") && (control.contents() == null
+            || !args.text("slot_signature").equals(control.contents().get("slot_signature").getAsString()))) {
+            throw new IllegalStateException("The slot contents changed. Read the current container or take a new numbered screenshot.");
+        }
         var mouse = mouseButton(args.integer("button", 0));
         clickScreen(layout.screen(), mouse, control.x() + control.width() / 2.0, control.y() + control.height() / 2.0, null);
         return GameBridge.after(2, control.json());

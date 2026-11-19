@@ -44,6 +44,9 @@ final class ToolCatalog {
         validate(definition.getAsJsonObject("inputSchema"), args, "arguments");
         if (tool.equals("task")) Automation.validate(new Arguments(args));
         if (tool.equals("run_command")) CommandFeedback.command(new Arguments(args));
+        if (tool.equals("assert_container_slot") && !args.has("item") && !args.has("name") && !args.has("count")) {
+            throw new IllegalArgumentException("Specify at least one of item, name, or count");
+        }
     }
 
     private static void validate(JsonObject schema, JsonElement value, String path) {

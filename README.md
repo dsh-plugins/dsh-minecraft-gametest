@@ -52,6 +52,7 @@ DSH 中的工具名带有 `mc_` 前缀。
 | 方块状态和客户端持有的方块实体 SNBT | `get_block` |
 | 玩家坐标、朝向、生命值、饥饿值和背包 | `get_player` |
 | 编号点击、键盘按住、鼠标点击、拖拽和滚动 | `click_ui`、`key_input`、`mouse_input` |
+| 读取容器菜单和断言槽位内容 | `get_container`、`assert_container_slot` |
 | 执行游戏命令并获取回执 | `run_command` |
 | 寻路、挖掘、耕种、跟随和飞行 | `task` |
 | 显式等待和断言 | `wait_ticks`、`assert_block`、`assert_player_position`、`assert_screen` |
@@ -60,6 +61,14 @@ DSH 中的工具名带有 `mc_` 前缀。
 打开界面后调用 `screenshot_ui`，指定 `widget`（原版按钮等控件）、`slot`（容器物品栏）或 `all`。把截图返回的 `screen`、`layout`、`control_type` 和数字 ID 一起交给 `click_ui`。如果界面控件列表改变，需要重新截图。任意界面的鼠标坐标使用截图元数据中的 GUI 像素尺寸。自绘控件可用 `mouse_input` 按坐标操作。
 
 方块区域查询每次最多 4096 格。多人世界的数据范围由服务端同步决定。
+
+## 容器菜单测试
+
+`get_container` 和 `screenshot_ui` 的槽位数据包含原版物品 ID、显示名称 `label`、数量 `count`、描述 `lore`，以及 `area`（容器或玩家物品栏）。同一种图标可以用显示名称和描述区分。制作插件服的多页箱子菜单测试时，可以按下面的顺序操作。
+
+1. 打开菜单，读取 `get_container` 或带编号的 `screenshot_ui`。选定目标后，把 `id`、`screen`、`layout` 和目标的 `slot_signature` 交给 `click_ui`。`button: 1` 表示右键。若目标格内容已改变，槽位签名可拦截过期点击，即使页面标题和布局相同。
+2. 用 `assert_container_slot` 等待服务端更新，例如 `{"title":"Dispatch Desk","slot":13,"item":"minecraft:emerald","name":"Express shipment confirmed","count":3}`。`slot` 使用菜单内从零开始的索引。空槽可用 `count: 0` 断言，默认最多等 40 个客户端刻。
+3. 在 DSH 录制期间调用这些点击与断言。重放会检查各页的内容，首个不匹配的槽位会让重放停在对应步骤。
 
 ## 游戏命令
 
